@@ -175,6 +175,14 @@ samples/    the fixture set, with the ground truth each file was constructed to 
 artifacts/  trained models and metrics — empty until you train something
 ```
 
+## License
+
+MIT for the code in this repository. That grant covers exactly what is here: the analysers, the API,
+the frontend, the training scripts. It does not reach the datasets, because it cannot — the corpora
+in [`ml/README.md`](ml/README.md) are research-licensed, non-commercial, and gated behind agreements
+their authors control, and none of them are distributed here. Anyone training weights for anything
+beyond personal study is responsible for reading those terms and agreeing to them directly.
+
 ## Read next
 
 - [`REPORT.md`](REPORT.md) — problem statement, method, what was measured, what was not, limitations
