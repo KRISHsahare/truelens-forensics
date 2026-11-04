@@ -147,7 +147,13 @@ export function useAnalysis(onSettled?: (state: AnalysisState) => void): Analysi
           message:
             api?.detail ??
             api?.message ??
-            "The analysis engine could not be reached. Check that the backend is running.",
+            // A fetch that the browser blocked for CORS and a server that is down are
+            // indistinguishable here -- both are a rejected promise with no status -- and the two
+            // need opposite fixes. Saying only "check the backend is running" sent an operator to
+            // a healthy service while the real problem was its allowlist.
+            "The analysis engine did not answer. Either it is not running, or this page's address " +
+            "is not in its CORS allowlist: a blocked response looks exactly like a dead server " +
+            "from the browser. Check GET /api/health on the engine and read its `network` field.",
           retryAfterSeconds: api?.retryAfterSeconds ?? null,
         });
         return;

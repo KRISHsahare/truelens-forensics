@@ -28,7 +28,8 @@ def fresh_settings(monkeypatch):
     test that silently inherits them proves nothing about the defaults it claims to check.
     """
     managed = ("ENVIRONMENT", "OVERLAY_SIGNING_KEY", "WEB_CONCURRENCY", "STORE_BACKEND",
-               "PERF_PROFILE", "POOL_MAX_WORKERS", "COPY_MOVE_FEATURES", "CNN_TTA")
+               "PERF_PROFILE", "POOL_MAX_WORKERS", "COPY_MOVE_FEATURES", "CNN_TTA",
+               "FRONTEND_ORIGIN", "EXTRA_CORS_ORIGINS")
 
     def build(**env: str):
         for key in managed:
@@ -106,3 +107,36 @@ def test_an_explicit_pool_setting_beats_the_profile(fresh_settings) -> None:
     # operator said 500. Same for a boolean -- CNN_TTA is False in render-1cpu.
     assert s.copy_move_features == 500
     assert s.cnn_tta is True
+
+
+def test_a_scheme_less_origin_still_lets_the_browser_read_responses(fresh_settings) -> None:
+    """CORS compares exact strings, and a browser never sends a bare host.
+
+    `FRONTEND_ORIGIN=truelens.example.com` is the single most damaging typo this service can be
+    configured with: the API answers 200 to every request, the browser discards each body, and the
+    frontend truthfully reports that it could not reach a backend that is running fine. Normalising
+    the configured value costs nothing and removes the whole class.
+    """
+    s = fresh_settings(ENVIRONMENT="prod", OVERLAY_SIGNING_KEY="k" * 40,
+                      FRONTEND_ORIGIN="truelens.example.com/")
+    assert s.cors_origins == ["https://truelens.example.com"], s.cors_origins
+
+
+def test_preview_origins_are_normalised_the_same_way(fresh_settings) -> None:
+    s = fresh_settings(ENVIRONMENT="prod", OVERLAY_SIGNING_KEY="k" * 40,
+                      FRONTEND_ORIGIN="https://truelens.app",
+                      EXTRA_CORS_ORIGINS=" pre-17.truelens.app , https://truelens.app/")
+    assert s.cors_origins == ["https://truelens.app", "https://pre-17.truelens.app"], s.cors_origins
+
+
+def test_an_allowlist_that_can_never_match_is_fatal_in_prod(fresh_settings) -> None:
+    s = fresh_settings(ENVIRONMENT="prod", OVERLAY_SIGNING_KEY="k" * 40, FRONTEND_ORIGIN="")
+    assert s.cors_origins == []
+    assert any("FRONTEND_ORIGIN" in p for p in s.validate_prod()), s.validate_prod()
+
+
+def test_dev_still_accepts_both_loopback_spellings(fresh_settings) -> None:
+    """The pair that broke a local run: `.env.local` says 127.0.0.1, the default says localhost."""
+    s = fresh_settings(ENVIRONMENT="dev", FRONTEND_ORIGIN="http://localhost:3000")
+    assert "http://127.0.0.1:3000" in s.cors_origins, s.cors_origins
+    assert not any("prod" in p for p in s.validate_prod())

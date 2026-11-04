@@ -569,6 +569,11 @@ def test_health_reports_the_blocks_an_operator_asks_for(fake):
     assert data["concurrency"]["pool_mode"] == "stub"
     assert data["cache"]["capacity"] == 8
     assert isinstance(data["artifacts"], dict)
+    # The allowlist is published here on purpose. A CORS misconfiguration makes every request
+    # succeed and still breaks the site, so "which origins will get a readable response" has to be
+    # answerable from the health endpoint rather than inferred from a browser's console.
+    assert data["network"]["cors_origins"], data["network"]
+    assert "trust_proxy" in data["network"]
     assert data["uptime_s"] == 1.5
 
 

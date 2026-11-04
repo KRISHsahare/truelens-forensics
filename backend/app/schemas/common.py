@@ -89,4 +89,10 @@ class Health(BaseModel):
     cache: dict[str, Any] = Field(default_factory=dict)
     concurrency: dict[str, Any] = Field(default_factory=dict)
     artifacts: dict[str, bool] = Field(default_factory=dict)
+    #: The resolved CORS allowlist and proxy trust. This is here because a wrong `FRONTEND_ORIGIN`
+    #: produces the most misleading failure this service can have: every request succeeds with 200,
+    #: and the browser simply refuses to hand the body to the page -- so the frontend reports an
+    #: unreachable backend while the backend's own health check is green. Reading the list is the
+    #: one-glance diagnosis; probing with curl is not something an operator should have to do.
+    network: dict[str, Any] = Field(default_factory=dict)
     uptime_s: float = 0.0

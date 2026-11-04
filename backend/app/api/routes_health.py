@@ -77,6 +77,7 @@ async def health(request: Request) -> Health:
         cache=cache_stats,
         concurrency=orch.stats(),
         artifacts=_artifact_flags(settings),
+        network={"cors_origins": settings.cors_origins, "trust_proxy": settings.trust_proxy},
         uptime_s=orch.uptime_s,
     )
 

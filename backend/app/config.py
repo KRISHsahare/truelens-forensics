@@ -146,8 +146,15 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins(self) -> list[str]:
-        origins = [self.frontend_origin.strip()]
-        origins += [o.strip() for o in self.extra_cors_origins.split(",") if o.strip()]
+        origins = [self.frontend_origin]
+        origins += self.extra_cors_origins.split(",")
+        # Normalised rather than taken literally, because CORS compares exact strings and the
+        # failure is total and silent: the server answers 200, the browser refuses to hand the body
+        # to the page, and the only symptom is a frontend that says it could not reach a backend
+        # that is demonstrably running. `truelens.example.com` and
+        # `https://truelens.example.com/` are the two typos that cause it, and neither is a
+        # plausible thing to make an operator debug by hand.
+        origins = [_normalize_origin(o) for o in origins]
         if self.environment == "dev":
             origins += [_loopback_sibling(o) for o in list(origins)]
         return [o for o in dict.fromkeys(origins) if o]
@@ -184,6 +191,12 @@ class Settings(BaseSettings):
                     "URL minted on one 403s on the next) or the development constant is used, which "
                     "is published in this repository and lets anyone sign any overlay path."
                 )
+            if not self.cors_origins:
+                problems.append(
+                    "FRONTEND_ORIGIN must name the origin the site is served from (e.g. "
+                    "https://app.example.com). CORS compares exact strings, so an empty or "
+                    "unparseable value lets no browser read any response: the API answers 200 and "
+                    "the page reports that the engine is unreachable.")
             if self.web_concurrency > 1 and self.store_backend == "memory":
                 problems.append(
                     f"WEB_CONCURRENCY={self.web_concurrency} with STORE_BACKEND=memory: jobs "
@@ -235,6 +248,22 @@ def _resolve_artifacts(settings: Settings) -> None:
             if candidate.exists():
                 setattr(settings, field, str(candidate))
                 break
+
+
+def _normalize_origin(value: str) -> str:
+    """A browser `Origin` string, or "" if the input cannot become one.
+
+    Browsers send `https://host` with no scheme-less or trailing-slash variant, so a configured
+    origin missing either never matches anything and the whole site stops reading responses while
+    every server-side health check still passes. A bare host is completed to `https://` because in
+    production that is the only scheme it can legitimately be served over.
+    """
+    v = (value or "").strip().rstrip("/")
+    if not v:
+        return ""
+    if "://" not in v:
+        v = f"https://{v}"
+    return v
 
 
 def _loopback_sibling(origin: str) -> str:
