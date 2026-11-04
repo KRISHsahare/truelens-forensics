@@ -27,7 +27,8 @@ def fresh_settings(monkeypatch):
     developer's shell or a CI job can carry `ENVIRONMENT` or `OVERLAY_SIGNING_KEY`, and a settings
     test that silently inherits them proves nothing about the defaults it claims to check.
     """
-    managed = ("ENVIRONMENT", "OVERLAY_SIGNING_KEY", "WEB_CONCURRENCY", "STORE_BACKEND")
+    managed = ("ENVIRONMENT", "OVERLAY_SIGNING_KEY", "WEB_CONCURRENCY", "STORE_BACKEND",
+               "PERF_PROFILE", "POOL_MAX_WORKERS", "COPY_MOVE_FEATURES", "CNN_TTA")
 
     def build(**env: str):
         for key in managed:
@@ -76,3 +77,32 @@ def test_two_workers_on_the_memory_store_is_fatal(fresh_settings) -> None:
     s = fresh_settings(ENVIRONMENT="prod", OVERLAY_SIGNING_KEY="x" * 40,
                       WEB_CONCURRENCY="2", STORE_BACKEND="memory")
     assert any("WEB_CONCURRENCY" in p for p in s.validate_prod())
+
+
+def test_render_profiles_cap_the_pool_at_the_machine_they_describe() -> None:
+    """The pool size is part of the profile, because `os.cpu_count()` lies inside a container.
+
+    Render's free instance reports the host's core count for a 0.1 CPU allocation, so the pool
+    resolved to seven spawn workers. They could not finish importing numpy and cv2 before the
+    request deadline, every pooled technique came back `skipped`, and the service answered a real
+    question with nothing measured. A profile that tunes the tile counts but leaves the pool sized to
+    a machine it is not running on is not a profile.
+    """
+    one = config._PROFILE_PRESETS["render-1cpu"]
+    two = config._PROFILE_PRESETS["render-2cpu"]
+    assert one["pool_max_workers"] == 1
+    assert two["pool_max_workers"] == 2
+    assert one["max_concurrent_jobs"] <= one["pool_max_workers"] + 1, (
+        "more concurrent jobs than workers queues work the pool cannot start inside the deadline")
+
+
+def test_an_explicit_pool_setting_beats_the_profile(fresh_settings) -> None:
+    """`apply_profile` must not overwrite a value the operator set on purpose."""
+    s = fresh_settings(ENVIRONMENT="prod", OVERLAY_SIGNING_KEY="k" * 40,
+                      PERF_PROFILE="render-1cpu", POOL_MAX_WORKERS="3",
+                      COPY_MOVE_FEATURES="500", CNN_TTA="true")
+    assert s.pool_max_workers == 3
+    # The documented example, and the reason the bug mattered: the preset says 1200 and the
+    # operator said 500. Same for a boolean -- CNN_TTA is False in render-1cpu.
+    assert s.copy_move_features == 500
+    assert s.cnn_tta is True

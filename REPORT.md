@@ -110,7 +110,7 @@ model is worth shipping (≥20k per CNN class across ≥3 generator families; �
 
 | Check | Result |
 |---|---|
-| Backend test suite | **453 passed** in 15.7 s, including 13 new ML-pipeline contract tests |
+| Backend test suite | **466 passed** on Python 3.11.16 and 3.12.10, including 13 ML-pipeline contract tests and 6 settings/profile tests |
 | Spawn-pool tests (`-m pool`) | pass — the pickling path that an in-process test cannot reach |
 | `smoke_techniques.py` | all expectations met (each analyser fires ≥0.35 on its artefact, ≤0.25 on a quiet file) |
 | `smoke_fusion.py` | all 10 fixtures produce the expected verdict *and* the expected score band, including the two that must come back `inconclusive` |
@@ -189,6 +189,31 @@ caught at all:
 7. **`evaluate_cnn` refused to write its own metrics file** — scikit-learn returns PR precision/recall
    one element longer than its thresholds, and ROC's first threshold is `inf`. The validator was right;
    the writer was wrong. Now aligned and sentinel-mapped, with a regression test.
+8. **The 3.11 container crashed at import; 453 tests on 3.12 said nothing.** `TechniqueSpec.kwargs`
+   defaulted to `MappingProxyType({})`. dataclasses uses unhashability as its test for a mutable
+   default, and that predicate is identical in 3.11 and 3.12 — what changed is the *type*:
+   `mappingproxy` is unhashable in 3.11 and gained `__hash__` in 3.12. Legal on the machine that wrote
+   it, fatal on the one that runs it. Fixed with a `default_factory`, and guarded by a test that names
+   `MappingProxyType` explicitly so it bites on either interpreter — verified by putting the bug back.
+9. **Production reported `problems: []` while signing every overlay URL with a published constant.**
+   `get_settings()` substituted the development key whenever `OVERLAY_SIGNING_KEY` was empty, and
+   `validate_prod()` then tested for an empty key. The guard could not fail, so the deployed service
+   used a value that is in this repository — anyone could forge a valid overlay signature. The
+   fallback is now dev-only, and the app refuses to boot in prod without a real key.
+10. **A deployed analysis answered `authentic` having measured nothing.** On Render's free instance
+   every pooled check came back `skipped` and the result was `authentic`, overall 0.0, reliability
+   0.31 — two hundredths above the floor where "nothing found" is allowed to become a claim. Two
+   fixes: a penalty for fewer than three usable measurements in total, and a verdict gate that reads
+   coverage directly instead of inferring it from a product of penalties. A deterministic fact (a
+   signed manifest, a generator block) still decides, because that evidence is not statistical.
+11. **The profile preset overwrote every environment variable it was supposed to defer to.**
+   `apply_profile` compared `key.upper()` against a *lower-cased* set of environment names, so the
+   membership test could never succeed and `COPY_MOVE_FEATURES=500` silently became 1200. Found by a
+   test written for a different change.
+12. **The pool was sized to the host, not the container.** `pool_max_workers` resolved from
+    `os.cpu_count()`, which reports the host's cores inside a 0.1 CPU instance — seven spawn workers
+    that could not finish importing before the deadline. It is now part of each profile, which is what
+    a profile is for.
 
 ## 6. Limitations
 
@@ -240,7 +265,7 @@ from the run, and `fusion.source` flips from `expert` to `learned` without a cod
 
 ```bash
 cd backend && uv sync --extra dev
-uv run pytest -q                        # 453 passed
+uv run pytest -q                        # 466 passed
 uv run pytest -q -m pool
 uv run python scripts/smoke_techniques.py
 uv run python scripts/smoke_fusion.py

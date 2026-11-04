@@ -37,6 +37,9 @@ FLOOR = 0.05
 
 #: Below this many *usable* measurements in a group, that group's score is barely supported.
 STRONG_COVERAGE = 3
+#: Below this many usable measurements across all groups, the analysis measured almost nothing at
+#: all -- a different fact from "one group is thin", and the one that has to be priced separately.
+MIN_MEASURED_CHECKS = 3
 MIN_SIDE_FLOOR = 256
 #: Bits per pixel under which messenger/social recompression has clearly taken detail away.
 LOW_BPP = 0.35
@@ -147,6 +150,23 @@ def _thin_ai(ctx: ReliabilityContext) -> bool:
     return ctx.coverage.get("ai", 0) < STRONG_COVERAGE
 
 
+def _mostly_missing(ctx: ReliabilityContext) -> bool:
+    """Fewer than `MIN_MEASURED_CHECKS` of the ten produced a usable measurement, in total.
+
+    The two thin-coverage rules below are per group, and each costs 0.30, so a job where *nothing*
+    ran still lands at 0.9 x 0.7 x 0.7 = 0.31 reliability — just above the line where the verdict
+    layer stops calling it inconclusive. That is how a service whose worker pool never started
+    answered "authentic" for a spliced photograph: the arithmetic was defensible and the conclusion
+    was not. Total coverage is the fact that distinguishes "few checks fired" from "no check fired".
+    """
+    return _measured_count(ctx) < MIN_MEASURED_CHECKS
+
+
+def _measured_count(ctx: ReliabilityContext) -> int:
+    return sum(1 for spec in TECHNIQUES
+               if spec.group != "context" and ctx.weight(spec.name) != "unavailable")
+
+
 #: Declared in the order they should be shown to a reviewer: input-quality problems first, then
 #: missing checks, then thin coverage.
 _PENALTIES: tuple[tuple[Callable[[ReliabilityContext], bool], Penalty], ...] = (
@@ -188,6 +208,11 @@ _PENALTIES: tuple[tuple[Callable[[ReliabilityContext], bool], Penalty], ...] = (
         "no_face", "No face was detected, so the face-consistency checks were skipped. Expected "
         "for most photographs; it only matters if a face was central to the question.", 0.12,
         "edited")),
+    (_mostly_missing, Penalty(
+        "almost_nothing_ran", "Fewer than three of the ten checks produced a usable measurement, "
+        "so this analysis has almost nothing to report. Either the file is hostile to every method "
+        "or the engine did not finish its work -- see the per-technique status below.",
+        0.55, severity="severe")),
     (_thin_edited, Penalty(
         "thin_edited", "Fewer than three manipulation checks produced a usable measurement, so "
         "the edited score rests on thin evidence.", 0.30, "edited", "severe")),

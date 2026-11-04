@@ -21,6 +21,12 @@ PerfProfile = Literal["dev-12core", "render-2cpu", "render-1cpu"]
 # Per-profile quality/cost knobs. Each entry trades forensic sensitivity for latency;
 # the trade-offs are surfaced to the user via reliability penalties so the UI stays honest.
 _PROFILE_PRESETS: dict[PerfProfile, dict[str, float | int | bool]] = {
+    # `pool_max_workers` is in the presets because leaving it out was a live failure: the pool size
+    # otherwise resolves from os.cpu_count(), and a container reports the *host's* cores. Render's
+    # free instance showed 12 cores for a 0.1 CPU allocation, so the service spawned seven children
+    # that could not finish starting before the request deadline -- every pooled technique came back
+    # "skipped" and the analysis had nothing to say. A pool sized to the machine the profile
+    # describes is the point of the profile.
     "dev-12core": {
         "ghost_tiles": 3,
         "copy_move_features": 3000,
@@ -38,6 +44,7 @@ _PROFILE_PRESETS: dict[PerfProfile, dict[str, float | int | bool]] = {
         "gradcam_min_ai_score": 0.45,
         "overlay_max_dim": 1280,
         "max_concurrent_jobs": 2,
+        "pool_max_workers": 2,
         "job_soft_deadline_s": 8.0,
         "job_hard_deadline_s": 15.0,
     },
@@ -48,6 +55,7 @@ _PROFILE_PRESETS: dict[PerfProfile, dict[str, float | int | bool]] = {
         "gradcam_min_ai_score": 0.60,
         "overlay_max_dim": 1024,
         "max_concurrent_jobs": 1,
+        "pool_max_workers": 1,
         "job_soft_deadline_s": 10.0,
         "job_hard_deadline_s": 20.0,
     },
@@ -149,9 +157,14 @@ class Settings(BaseSettings):
 
         Only overrides values the user did not set explicitly, so a single env var
         (e.g. ``COPY_MOVE_FEATURES=500``) still wins over the preset.
+
+        The comparison is upper-cased on both sides because ``pydantic-settings`` reads env vars
+        case-insensitively: comparing ``key.upper()`` against a lower-cased set of names -- which is
+        what this did -- means the membership test can never succeed, every preset value wins, and
+        the promise in the paragraph above is quietly false for every knob in the profile.
         """
         preset = _PROFILE_PRESETS[self.perf_profile]
-        explicit = {k.lower() for k in os.environ}
+        explicit = {k.upper() for k in os.environ}
         for key, default in preset.items():
             if key.upper() not in explicit:
                 setattr(self, key, default)

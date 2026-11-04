@@ -69,7 +69,7 @@ Verify the product rather than trusting this file:
 
 ```bash
 cd backend
-uv run pytest -q                      # 453 tests: analysers, fusion, verdict, API, ML contracts
+uv run pytest -q                      # 466 tests: analysers, fusion, verdict, API, ML contracts
 uv run pytest -q -m pool              # the real spawn pool, which is where pickling regressions live
 uv run python scripts/smoke_techniques.py   # each analyser responds to the artefact it claims to detect
 uv run python scripts/smoke_fusion.py        # ten scores fuse into the verdict the fixtures imply

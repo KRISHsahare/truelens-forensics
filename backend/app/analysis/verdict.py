@@ -31,7 +31,7 @@ from typing import Any, Literal
 
 from app.analysis.explainers import VERDICT_COPY
 from app.analysis.fusion import FusionResult
-from app.analysis.reliability import Reliability
+from app.analysis.reliability import MIN_MEASURED_CHECKS, Reliability
 
 __all__ = ["EvidenceFlag", "VerdictResult", "build_flags", "decide"]
 
@@ -213,6 +213,17 @@ def decide(fusion: FusionResult, reliability: Reliability,
         verdict = forced
         reasons.append("A deterministic flag about the file itself decides this, independently of "
                        "the pixel evidence.")
+    elif sum(reliability.coverage.values()) < MIN_MEASURED_CHECKS:
+        # Before the reliability comparison, not after it. Reliability is a product of penalties that
+        # each describe a *reason* something was missing, and a job where nine checks never ran lands
+        # at 0.31 -- a hair above the line where "authentic" becomes allowed. The count of measurements
+        # is the direct fact, and it is the one that decides whether "nothing found" means anything.
+        verdict = "inconclusive"
+        reasons.append(
+            f"Only {sum(reliability.coverage.values())} of the ten checks produced a usable "
+            "measurement, so 'no evidence of manipulation' is not a claim this analysis can make. "
+            "This is reported as inconclusive on purpose: the alternative is a clean-looking answer "
+            "built on nothing.")
     elif rel_low and overall < AUTHENTIC_CEILING:
         verdict = "inconclusive"
         reasons.append(

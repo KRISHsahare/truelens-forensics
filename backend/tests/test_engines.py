@@ -30,7 +30,7 @@ from app.analysis.fusion import (
 )
 from app.analysis.registry import names as technique_names
 from app.analysis.reliability import FLOOR, Reliability, ReliabilityContext, compute_reliability
-from app.analysis.verdict import build_flags, decide
+from app.analysis.verdict import (MIN_RELIABILITY_FOR_FINDING, build_flags, decide)
 
 from .support import make_arrays, outcome, real_explanations, speaks
 from .support import quiet_outcomes as _quiet
@@ -589,3 +589,57 @@ def test_the_explanation_weight_and_not_the_score_defines_unavailable():
     assert "cnn_missing" not in [r["id"] for r in spoke.reasons]
     assert "cnn_missing" in [r["id"] for r in silent.reasons]
     assert silent.score < spoke.score
+
+
+def test_a_job_where_almost_nothing_ran_is_inconclusive_even_at_ok_reliability():
+    """The verdict gate reads coverage, not the reliability number.
+
+    On the deployed service every pooled check came back `skipped` and the analysis still reported
+    `authentic` with overall 0.0: the penalties for missing checks multiply to about 0.31, which sits
+    a hair above the floor where "nothing found" is allowed to become a claim. A threshold that
+    decides between "authentic" and "we measured nothing" by two hundredths is not a guard. Coverage
+    is the direct fact, so it is the one that decides -- here at a reliability score that the old
+    logic would have waved through.
+    """
+    rel = Reliability(score=0.62, reasons=(), coverage={"ai": 1, "edited": 1})
+    result = decide(_fusion(_quiet()), rel, _quiet())
+
+    assert result.verdict == "inconclusive"
+    assert any("Only 2 of the ten" in r for r in result.reasons), result.reasons
+
+
+def test_a_deterministic_fact_still_decides_when_no_check_measured_anything():
+    """The coverage gate must not swallow the one class of evidence that is not statistical.
+
+    A signed C2PA generative manifest or a generator parameter block is a fact about the file, and it
+    survives even when every pixel analyser timed out. Making inconclusive unconditional would have
+    turned "the file states it was generated" into "we could not tell", which is its own lie.
+    """
+    outcomes = _quiet(metadata=speaks("metadata", 0.9, deterministic_flag="generator_parameters"))
+    rel = Reliability(score=0.9, reasons=(), coverage={"ai": 0, "edited": 0})
+    result = decide(_fusion(outcomes), rel, outcomes)
+
+    assert result.verdict == "ai_generated"
+    assert any("deterministic flag" in r for r in result.reasons), result.reasons
+
+
+def test_every_check_skipped_costs_reliability_and_produces_no_claim():
+    """The deployed failure, reproduced from its outcome shapes rather than its log.
+
+    Asserted end to end because the two halves were each defensible on their own: the penalties
+    described real reasons, the noisy-OR of no terms is legitimately 0.0, and the verdict layer
+    faithfully reported what a 0.0 at 0.31 reliability meant under the old rules. What none of them
+    asked was how many checks actually ran.
+    """
+    skipped = {name: outcome(name, None, {}, status="skipped") for name in technique_names()}
+    skipped["cnn"] = outcome("cnn", None, {"available": False, "reason": "no weights"},
+                            status="skipped")
+    rel = compute_reliability(_ctx(outcomes=skipped))
+
+    assert sum(rel.coverage.values()) == 0
+    assert "almost_nothing_ran" in [r["id"] for r in rel.reasons]
+    assert rel.score < MIN_RELIABILITY_FOR_FINDING, rel.score
+
+    result = decide(_fusion(skipped), rel, skipped)
+    assert result.verdict == "inconclusive"
+    assert result.overall == 0.0
