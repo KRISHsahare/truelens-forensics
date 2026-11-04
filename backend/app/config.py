@@ -166,8 +166,10 @@ class Settings(BaseSettings):
         if self.environment == "prod":
             if not self.overlay_signing_key:
                 problems.append(
-                    "OVERLAY_SIGNING_KEY must be set in prod; an auto-generated key makes "
-                    "overlay URLs 403 on whichever worker did not mint them."
+                    "OVERLAY_SIGNING_KEY must be set in prod; overlay URLs are HMACs over their path "
+                    "and expiry, so without a configured key either every worker invents its own (a "
+                    "URL minted on one 403s on the next) or the development constant is used, which "
+                    "is published in this repository and lets anyone sign any overlay path."
                 )
             if self.web_concurrency > 1 and self.store_backend == "memory":
                 problems.append(
@@ -237,14 +239,23 @@ def _loopback_sibling(origin: str) -> str:
     return origin
 
 
+#: Stand-in key for local development, where overlay URLs never leave the machine. Named as a
+#: constant so the prod path can be tested against the value it must never fall back to.
+_DEV_OVERLAY_KEY = "dev-insecure-overlay-signing-key-change-me"
+
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     s = Settings()
     s.apply_profile()
     _resolve_artifacts(s)
-    if not s.overlay_signing_key:
-        # Dev convenience only. validate_prod() makes this fatal in production.
-        s.overlay_signing_key = "dev-insecure-overlay-signing-key-change-me"
+    if not s.overlay_signing_key and s.environment != "prod":
+        # Dev convenience only, and only outside production. Substituting this in prod would make
+        # the `validate_prod` check below unsatisfiable-but-passing: it tests for an empty key, the
+        # fallback fills one in first, and the service then boots signing with a constant that is
+        # published in this repository -- which is the exact "looks like someone else's intermittent
+        # bug" failure the check exists to prevent.
+        s.overlay_signing_key = _DEV_OVERLAY_KEY
     return s
 
 
