@@ -23,8 +23,12 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1", "localhost"],
   // `next start` from a copied `node_modules` is a 400 MB image of packages the running server never
   // reads. Standalone emits the traced subset — the server, its dependencies, and nothing else — which
-  // is what `frontend/Dockerfile` copies. Vercel does not need this and is unaffected by it.
-  output: "standalone",
+  // is what `frontend/Dockerfile` copies.
+  //
+  // Conditional because standalone is a *self-hosting* mechanism: Vercel runs its own output
+  // processing and does not read `.next/standalone`, so asking for it there buys nothing and adds a
+  // config the platform ignores. `VERCEL` is set by Vercel's build environment.
+  output: process.env.VERCEL ? undefined : "standalone",
   turbopack: {
     rules: {
       "*.css": {

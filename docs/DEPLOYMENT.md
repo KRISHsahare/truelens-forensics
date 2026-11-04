@@ -76,6 +76,18 @@ request goes to the old origin, and the health pill never turns green. If you us
 deployments, add the preview origins to the backend's `EXTRA_CORS_ORIGINS` (comma-separated) or the
 browser will block them.
 
+Two things this repository deliberately does not do:
+
+- **No `engines.node` pin.** Next 16.4 requires Node `>=20.9.0`, and Vercel's default is its latest
+  LTS, which satisfies that. An exact pin is worse than nothing: a version string that does not match
+  a runtime Vercel offers fails the build with an engine-mismatch error, which is a common and
+  entirely self-inflicted deployment failure.
+- **No `output: "standalone"` on Vercel.** That option exists for self-hosting — it emits the traced
+  file set `.next/standalone` that `frontend/Dockerfile` copies. Vercel runs its own output
+  processing and never reads that directory, so `next.config.ts` enables it only when `VERCEL` is
+  unset. Verified both ways: with `VERCEL=1` the build succeeds and produces no `standalone`
+  directory; without it the directory is there for the image build.
+
 ## 3. Self-hosting with Docker
 
 ```bash
