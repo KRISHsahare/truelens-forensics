@@ -23,7 +23,7 @@ rest of the system keeps re-asking:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any, Literal
 
@@ -91,6 +91,9 @@ class Lit:
 
 Arg = FromArrays | FromConfig | Lit
 
+#: The empty keyword binding list, shared by every spec that takes no keywords.
+_NO_KWARGS: MappingProxyType[str, Arg] = MappingProxyType({})
+
 
 @dataclass(frozen=True, slots=True)
 class TechniqueSpec:
@@ -104,8 +107,12 @@ class TechniqueSpec:
     module: str
     #: Positional arguments, in order.
     args: tuple[Arg, ...] = ()
-    #: Keyword arguments.
-    kwargs: MappingProxyType[str, Arg] = MappingProxyType({})
+    #: Keyword arguments. A factory, not a default: dataclasses uses "unhashable" as its test for a
+    #: mutable default, and `mappingproxy` is unhashable on Python 3.11 but gained `__hash__` in
+    #: 3.12 — so this line as a plain default imports on the dev machine and raises ValueError at
+    #: import inside the 3.11 container. `pyproject.toml` promises >=3.11, so 3.11 is the contract.
+    #: The factory returns one shared frozen mapping; nothing is allocated per spec.
+    kwargs: MappingProxyType[str, Arg] = field(default_factory=lambda: _NO_KWARGS)
     #: One sentence for the technique grid on the landing page.
     summary: str = ""
     #: Display order in the analyzer's progress stepper and result cards.
