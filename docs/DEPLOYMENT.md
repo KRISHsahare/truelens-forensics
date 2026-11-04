@@ -10,6 +10,37 @@ Render  ──▶  truelens-api.onrender.com  (FastAPI, CPU, 1 worker)
              joined by NEXT_PUBLIC_API_BASE_URL  +  FRONTEND_ORIGIN
 ```
 
+## 0. Where each half goes, and why the API is not a Vercel project
+
+**Frontend → Vercel. Backend → Render, Fly, Railway, or any container host. Not both on Vercel.**
+
+Importing this repository into Vercel without setting the root directory makes Vercel find
+`backend/pyproject.toml`, match `backend/app/main.py` as a FastAPI entrypoint, install the whole
+dependency tree into a function bundle, and fail with:
+
+```
+[LAMBDA_SIZE_EXCEEDED] Total bundle size (1170.89 MB) exceeds the maximum
+```
+
+The standard Python bundle limit is 500 MB uncompressed, and torch alone is most of that 1.17 GB.
+There is a 5 GB "Large Functions" beta, and `functions.excludeFiles` can trim test and fixture
+folders — **do not use either to force this app onto Vercel.** The size limit is the first symptom of
+four architectural mismatches, each of which breaks after the bundle problem is solved:
+
+| This app assumes | A Python Vercel Function gives |
+|---|---|
+| A `spawn` process pool of analysers sized to the machine, started once at boot | A request-scoped process; the pool is built and torn down per cold start |
+| `CnnRuntime` loaded exactly once in the parent process, warm forever | A fresh torch import per invocation, seconds before any work starts |
+| A background sweeper task and an in-memory job store shared by every poll | Separate instances, so a job created on one 404s when another answers the poll |
+| Overlay PNGs written to a scratch directory and served by signed URL for ten minutes | An ephemeral filesystem per instance: the heatmap a viewer just loaded is gone on the next request |
+
+Jobs here also run 6-12 seconds and are polled, which is exactly the shape Function timeouts and cold
+starts are worst at. The container image in `backend/Dockerfile` exists precisely so this service can
+run where those four assumptions are true.
+
+If you want one host for everything, use Docker Compose on a single VM — `docker compose up --build`
+gives you both halves with the same topology the code expects.
+
 ## 1. Backend on Render
 
 **New → Web Service**, connect the repository, and set *Root Directory* to `backend`.

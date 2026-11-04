@@ -149,9 +149,16 @@ running service expects — the failures there are the ones that never raise.
 
 ## Deploy
 
-[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) has the step-by-step for both targets, including the two
-things that bite: `NEXT_PUBLIC_API_BASE_URL` is a build-time value on Vercel, and Render's free tier
-needs `PERF_PROFILE=render-1cpu` or the analysis finishes after the request deadline.
+**Frontend to Vercel, backend to a container host (Render, Fly, Railway) — not both to Vercel.**
+The API is a long-lived process: a `spawn` analyser pool started once at boot, a torch model kept
+warm in the parent, a background sweeper, an in-memory job store shared across polls, and overlay
+PNGs on a filesystem that outlives the request. A Python Vercel Function gives you none of that, and
+importing this repo at its root fails before any of it matters — Vercel matches
+`backend/app/main.py` as a FastAPI entrypoint and bundles ~1.17 GB of torch past the 500 MB limit
+with `LAMBDA_SIZE_EXCEEDED`. [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) §0 has the four mismatches
+and the exact settings for both halves, including the two things that bite:
+`NEXT_PUBLIC_API_BASE_URL` is a build-time value on Vercel, and Render's small instances need
+`PERF_PROFILE=render-1cpu` or the analysis finishes after the request deadline.
 
 ```bash
 docker compose up --build          # web on :3000, api on :8010, needs OVERLAY_SIGNING_KEY
