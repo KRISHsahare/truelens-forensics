@@ -1,0 +1,13 @@
+# `node_modules` and `.next` are the two that matter. A copied Windows `node_modules` breaks the
+# Linux install of native deps, and a copied `.next` makes the standalone trace include a build that
+# was not this one.
+node_modules
+.next
+out
+.git
+.env
+.env.local
+.env.*.local
+*.log
+tsconfig.tsbuildinfo
+coverage

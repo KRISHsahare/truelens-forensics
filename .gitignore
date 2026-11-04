@@ -1,0 +1,40 @@
+# Environments and build output
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+node_modules/
+.next/
+out/
+coverage/
+.pytest_cache/
+.ruff_cache/
+tsconfig.tsbuildinfo
+*.log
+
+# Local secrets and local overrides. `.env` holds OVERLAY_SIGNING_KEY; `.env.local` holds a
+# developer's API origin. Neither belongs in history — and once a key is committed, rotating it is
+# the only fix, so the ignore list is the control that matters.
+.env
+.env.*
+!.env.example
+
+# Trained models and their metrics. Artifacts are produced by `ml/scripts/*`, gigabytes in size, and
+# licensed per dataset agreement — the directory is kept, its contents are not.
+artifacts/*
+!artifacts/.gitkeep
+backend/app/ml/models/*.onnx.tmp
+
+# Scratch and corpora. A corpus is a dataset, not source: it is what the license agreements deliver
+# and it must never be pushed.
+data/
+ml/.smoke/
+ml/.probe/
+browser-shots/
+samples/_scratch/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

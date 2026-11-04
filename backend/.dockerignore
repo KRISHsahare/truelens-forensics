@@ -1,0 +1,23 @@
+# The build context is the whole directory, and two of these entries are not about size:
+#
+# - `.venv` holds Windows wheels. Copied into a Linux image it produces an environment that imports
+#   nothing and fails at startup with a message about `cp312-win_amd64`.
+# - `tests/fixtures/images` and `report.pdf` are outputs of a previous run; the fixtures are rebuilt
+#   by `make_fixtures.py` when a test needs them.
+.venv
+.pytest_cache
+.ruff_cache
+__pycache__
+**/__pycache__
+*.pyc
+.env
+.env.*
+!.env.example
+.git
+artifacts
+data
+scratch
+*.log
+ml/.smoke
+ml/.probe
+browser-shots

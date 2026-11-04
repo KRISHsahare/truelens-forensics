@@ -1,0 +1,321 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Class-based theming, dark first: the palette is designed for a dim room and a bright screen
+   recording, and a `prefers-color-scheme` switch would change the meaning of a red bar mid-session.
+   `data-theme` is set on <html> by an inline script before first paint, so there is no flash and no
+   dependency on a theme library. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ---------------------------------------------------------------------------------- dark (default) */
+:root {
+  --background: oklch(0.16 0.018 250);
+  --foreground: oklch(0.94 0.01 240);
+
+  /* Panels are one step above the canvas, never white: a forensic UI is read for hours. */
+  --card: oklch(0.2 0.02 250);
+  --card-foreground: oklch(0.94 0.01 240);
+  --popover: oklch(0.21 0.022 250);
+  --popover-foreground: oklch(0.95 0.01 240);
+
+  /* One accent, electric teal. It means "the instrument", never "danger". */
+  --primary: oklch(0.82 0.14 178);
+  --primary-foreground: oklch(0.18 0.03 210);
+
+  --secondary: oklch(0.26 0.024 250);
+  --secondary-foreground: oklch(0.93 0.012 240);
+  --muted: oklch(0.24 0.02 250);
+  --muted-foreground: oklch(0.68 0.02 245);
+
+  --accent: oklch(0.28 0.03 250);
+  --accent-foreground: oklch(0.95 0.01 240);
+
+  --destructive: oklch(0.66 0.2 22);
+  --border: oklch(0.31 0.02 250);
+  --input: oklch(0.36 0.02 250);
+  --ring: oklch(0.82 0.14 178 / 60%);
+
+  /* Risk colours. Boundaries are the server's: green <0.35, amber 0.35–0.60, red >0.60. */
+  --risk-low: oklch(0.79 0.16 158);
+  --risk-moderate: oklch(0.8 0.16 78);
+  --risk-high: oklch(0.68 0.22 18);
+  /* "Nothing to measure" is graphite, never green. */
+  --risk-none: oklch(0.62 0.02 248);
+
+  --chart-1: oklch(0.82 0.14 178);
+  --chart-2: oklch(0.8 0.16 78);
+  --chart-3: oklch(0.68 0.22 18);
+  --chart-4: oklch(0.7 0.12 300);
+  --chart-5: oklch(0.68 0.02 248);
+
+  --grid-line: oklch(0.42 0.02 250 / 12%);
+  --scanline: oklch(0.9 0.02 240 / 4%);
+
+  --radius: 0.625rem;
+}
+
+/* ------------------------------------------------------------------------------------- light */
+[data-theme="light"] {
+  --background: oklch(0.98 0.004 250);
+  --foreground: oklch(0.22 0.02 250);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.02 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.02 250);
+  --primary: oklch(0.6 0.13 178);
+  --primary-foreground: oklch(0.99 0.005 250);
+  --secondary: oklch(0.95 0.006 250);
+  --secondary-foreground: oklch(0.3 0.02 250);
+  --muted: oklch(0.955 0.005 250);
+  --muted-foreground: oklch(0.5 0.02 250);
+  --accent: oklch(0.93 0.01 250);
+  --accent-foreground: oklch(0.25 0.02 250);
+  --destructive: oklch(0.55 0.2 22);
+  --border: oklch(0.88 0.008 250);
+  --input: oklch(0.8 0.01 250);
+  --ring: oklch(0.6 0.13 178 / 45%);
+
+  /* Darkened for AA contrast against a white panel — a 45%-light green bar on white is unreadable. */
+  --risk-low: oklch(0.6 0.15 158);
+  --risk-moderate: oklch(0.65 0.15 75);
+  --risk-high: oklch(0.56 0.22 18);
+  --risk-none: oklch(0.55 0.02 250);
+
+  --chart-1: oklch(0.6 0.13 178);
+  --chart-2: oklch(0.65 0.15 75);
+  --chart-3: oklch(0.56 0.22 18);
+  --chart-4: oklch(0.55 0.15 300);
+  --chart-5: oklch(0.55 0.02 250);
+
+  --grid-line: oklch(0.4 0.02 250 / 10%);
+  --scanline: oklch(0.2 0.02 250 / 3%);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-risk-low: var(--risk-low);
+  --color-risk-moderate: var(--risk-moderate);
+  --color-risk-high: var(--risk-high);
+  --color-risk-none: var(--risk-none);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --animate-fade-in: fade-in 0.25s ease-out;
+  --animate-fade-out: fade-out 0.15s ease-in;
+  --animate-scan: scan 2.4s linear infinite;
+  --animate-pulse-soft: pulse-soft 1.6s ease-in-out infinite;
+  /* Radix reports the open/closed state and expects the class to carry the animation. Measuring
+     the content and transitioning `height` would be the alternative; `grid-template-rows` gets the
+     same result with no JS and no clipped JSON tree. */
+  --animate-accordion-down: accordion-down 0.18s ease-out;
+
+  @keyframes fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes accordion-down {
+    from {
+      grid-template-rows: 0fr;
+    }
+    to {
+      grid-template-rows: 1fr;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes scan {
+    from {
+      transform: translateY(-100%);
+    }
+    to {
+      transform: translateY(100%);
+    }
+  }
+  @keyframes pulse-soft {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.45;
+    }
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    color-scheme: dark;
+    scroll-behavior: smooth;
+  }
+  html[data-theme="light"] {
+    color-scheme: light;
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  /* Every number that a user might compare against another number is tabular, or the column
+     jitters and the comparison is a lie. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-family: var(--font-mono);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+/* The instrument texture: a faint measurement grid, plus a scanline sweep on active panels.
+   Both are background images, so they cost nothing to repaint and never affect layout. */
+@utility lab-grid {
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 28px 28px;
+  background-position: -1px -1px;
+}
+
+@utility lab-vignette {
+  background-image:
+    radial-gradient(120% 80% at 50% -10%, var(--scanline), transparent 60%),
+    linear-gradient(to bottom, transparent, var(--background) 85%);
+}
+
+@utility mono-nums {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+  letter-spacing: -0.01em;
+}
+
+@utility hairline {
+  box-shadow: inset 0 1px 0 0 var(--grid-line);
+}
+
+/* Image rendering for heatmaps: a resized overlay must stay pixel-legible, or the evidence the
+   user is being shown is an interpolation artefact. */
+@utility pixels {
+  image-rendering: pixelated;
+}
+
+/* ----------------------------------------------------------------------------------- print
+   The screen is designed for a dim room; paper is not. Printing a report is the one moment the
+   dark theme is actively wrong — a graphite panel through a laser printer is a smudge, and a
+   45%-light green bar vanishes. So the tokens are re-declared for print only, with the same three
+   risk hues darkened for ink, and the instrument texture switched off.
+
+   The downloaded PDF is rendered server-side and does not depend on any of this; these rules are
+   for the browser's own Print button, which exists because some reviewers print what they see.
+*/
+@media print {
+  @page {
+    margin: 14mm;
+  }
+
+  :root,
+  [data-theme="dark"],
+  [data-theme="light"] {
+    --background: #ffffff;
+    --foreground: #14181d;
+    --card: #ffffff;
+    --card-foreground: #14181d;
+    --popover: #ffffff;
+    --popover-foreground: #14181d;
+    --primary: #0f766e;
+    --primary-foreground: #ffffff;
+    --secondary: #f2f4f7;
+    --secondary-foreground: #1b2027;
+    --muted: #f2f4f7;
+    --muted-foreground: #4b5563;
+    --accent: #eef1f5;
+    --accent-foreground: #14181d;
+    --destructive: #b32d40;
+    --border: #d7dce2;
+    --input: #cbd2da;
+    --ring: #0f766e;
+
+    --risk-low: #16794f;
+    --risk-moderate: #9a6a0c;
+    --risk-high: #ad2a3d;
+    --risk-none: #5b6672;
+
+    --grid-line: transparent;
+    --scanline: transparent;
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    /* Colour bands carry meaning, so a printer that drops backgrounds would remove the only visual
+       signal on a score bar. Exact colour is the accessibility choice here, not a decorative one. */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    background: #ffffff;
+  }
+
+  /* A card that splits its header from its body across a page break is a misread card. */
+  article,
+  section {
+    break-inside: avoid;
+  }
+}

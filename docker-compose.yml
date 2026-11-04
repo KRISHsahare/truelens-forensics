@@ -1,0 +1,79 @@
+# Whole product, one command: `docker compose up --build` then open http://localhost:3000.
+#
+# The two services do not talk to each other. The browser calls the API directly — that is the shipped
+# topology (static host and Python host are separate, and a same-origin proxy would buffer a 10 MB
+# upload against a 10 MB default limit) — which is why `NEXT_PUBLIC_API_BASE_URL` below is the
+# *host-facing* address and not `http://api:8010`. A container-network name is unreachable from a
+# browser on the host, and the failure is a page that renders and then never answers.
+#
+# Trained artifacts are mounted, not baked in: `./artifacts` at the repository root is what
+# `app.config` resolves `artifacts/model.pt` against, and the backend's own default paths work
+# unchanged. An empty directory is a supported state — the CNN reports unavailable, the fusion falls
+# back to the labelled expert prior, and the Methodology page says so.
+
+name: truelens
+
+services:
+  api:
+    build:
+      context: ./backend
+    image: truelens-api:local
+    restart: unless-stopped
+    ports:
+      - "8010:8010"
+    environment:
+      ENVIRONMENT: prod
+      # An overlay URL is an HMAC over its path and expiry. Without this the key is generated per
+      # process, so a URL minted by one worker is a 403 from the next one — and `prod` refuses to
+      # start rather than letting that be a mystery.
+      OVERLAY_SIGNING_KEY: ${OVERLAY_SIGNING_KEY:?set OVERLAY_SIGNING_KEY in .env or the shell}
+      FRONTEND_ORIGIN: http://localhost:3000
+      PERF_PROFILE: render-2cpu
+      # One worker, because the job store here is in-process memory. Two workers with a memory store
+      # means a job created on one 404s when the other answers the poll; `validate_prod` refuses it,
+      # and the fix is the `redis` profile below rather than a second worker.
+      WEB_CONCURRENCY: 1
+      STORE_BACKEND: ${STORE_BACKEND:-memory}
+      REDIS_URL: ${REDIS_URL:-}
+      TRUST_PROXY: "false"
+      ENABLE_CLIP_PROBE: ${ENABLE_CLIP_PROBE:-false}
+    volumes:
+      - ./artifacts:/srv/truelens/artifacts:ro
+    tmpfs:
+      # Uploads, decoded arrays and overlays live for at most ten minutes and never leave the
+      # container's memory. A bind mount here would be the one way to persist an image by accident.
+      - /data/scratch:size=512m,mode=1777
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8010/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:8010
+    image: truelens-web:local
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  redis:
+    profiles: ["redis"]
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 20s
+      timeout: 3s
+      retries: 3
+
+#  docker compose --profile redis up --build
+# with STORE_BACKEND=redis REDIS_URL=redis://redis:6379/0 WEB_CONCURRENCY=2 in the environment, which
+# is the only combination where more than one web worker is a correct answer.

@@ -1,0 +1,67 @@
+{
+  "generated_by": "tests/fixtures/make_fixtures.py",
+  "seed": 20260103,
+  "warning": "Synthetic fixtures. They prove each analyser responds to the artifact it claims to detect; they do NOT establish real-world accuracy.",
+  "images": [
+    {
+      "name": "authentic",
+      "label": "authentic",
+      "bytes": 335085,
+      "ground_truth": "Single-source photograph. Saved as JPEG once, with full camera EXIF."
+    },
+    {
+      "name": "spliced",
+      "label": "spliced",
+      "bytes": 302339,
+      "ground_truth": "Region [403:883, 185:545] pasted from a different image with 6.5-sigma noise, sourced from a JPEG q62, into a plate already encoded at q88. Offset is not 8-aligned."
+    },
+    {
+      "name": "copy_move",
+      "label": "copy_move",
+      "bytes": 335070,
+      "ground_truth": "Patch copied from (120,360) to (480,90); displacement (360,-270) px."
+    },
+    {
+      "name": "ai_generated",
+      "label": "ai_generated",
+      "bytes": 1327099,
+      "ground_truth": "Synthetic stand-in for a generated image: smoothed spectrum, period-2 checkerboard, near-zero sensor noise, no EXIF."
+    },
+    {
+      "name": "double_compressed",
+      "label": "edited",
+      "bytes": 348773,
+      "ground_truth": "Whole frame saved at q90, region [320:640, 240:480] re-saved at q55, grid-aligned."
+    },
+    {
+      "name": "heavy_compression",
+      "label": "authentic",
+      "bytes": 54881,
+      "ground_truth": "Authentic content saved at JPEG q32 \u2014 traces largely destroyed by compression."
+    },
+    {
+      "name": "small",
+      "label": "authentic",
+      "bytes": 8729,
+      "ground_truth": "128x128 \u2014 below the resolution floor for block statistics."
+    },
+    {
+      "name": "screenshot",
+      "label": "authentic",
+      "bytes": 8984,
+      "ground_truth": "Screenshot-like: 1920x1080, flat regions, PNG, no metadata."
+    },
+    {
+      "name": "no_exif",
+      "label": "authentic",
+      "bytes": 270600,
+      "ground_truth": "Authentic content with EXIF stripped, as a messenger or platform would."
+    },
+    {
+      "name": "generator_metadata",
+      "label": "ai_generated",
+      "bytes": 509830,
+      "ground_truth": "PNG with generator parameters embedded in a text chunk."
+    }
+  ]
+}
